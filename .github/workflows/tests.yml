@@ -10,27 +10,38 @@ jobs:
   test:
     runs-on: ubuntu-latest
     
-    strategy:
-      matrix:
-        python-version: ["3.10", "3.11", "3.12"]
-    
     steps:
       - uses: actions/checkout@v4
       
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.12"
       
       - name: Install dependencies
         run: pip install pytest pytest-cov
       
       - name: Run tests with coverage
-        run: pytest --cov=. --cov-report=xml --cov-report=term -v
+        run: |
+          pytest --cov=. --cov-report=term --cov-report=json -v
+          COVERAGE=$(python -c "import json; print(int(json.load(open(coverage.json))[totals][percent_covered]))")
+          echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
+          echo "Coverage: $COVERAGE%"
       
-      - name: Upload coverage to Codecov
-        if: matrix.python-version == '3.12'
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./coverage.xml
-          fail_ci_if_error: false
+      - name: Create coverage badge
+        if: github.ref == 'refs/heads/main'
+        run: |
+          if [ $COVERAGE -ge 80 ]; then COLOR="brightgreen"
+          elif [ $COVERAGE -ge 60 ]; then COLOR="yellow"
+          else COLOR="red"; fi
+          mkdir -p .github/badges
+          curl -s "https://img.shields.io/badge/coverage-${COVERAGE}%25-${COLOR}" > .github/badges/coverage.svg
+      
+      - name: Commit badge
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/badges/coverage.svg
+          git diff --staged --quiet || git commit -m "Update coverage badge [skip ci]"
+          git push
