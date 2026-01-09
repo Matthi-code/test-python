@@ -1,5 +1,7 @@
 # Test Python Project
 
+![Tests](https://github.com/Matthi-code/test-python/actions/workflows/tests.yml/badge.svg)
+
 Een simpel Python project voor de claude-dev VM met OrbStack.
 
 ## Structuur
